@@ -1,0 +1,134 @@
+<div style="padding: 10px 0; display:flex; justify-content:center;">
+  
+      <!-- 1. change linear-gradient -->
+      <!-- 2. change header image -->
+      <!-- 2. change property input label color -  -->
+      <!-- 2. change Est Impact background-color and color -  -->
+      <!-- 2. change label colors as needed -  -->
+      <!-- 2. change Monthly and Annual Input style background-color to school secondary -  -->
+      <!-- 2. change RATE PER RATE_PER_DOLLAR -  -->
+      
+  <div style="background: linear-gradient(to right, #00008B, #1E90FF); padding: 20px; width: 90%; max-width: 520px; min-width: 260px; display: flex; flex-direction: column; align-items: center; text-align: center; box-shadow: 0 10px 15px rgba(0,0,0,.3); border-radius: 10px;">
+
+    <!-- Header Image -->
+    <div style="max-width: 100%; overflow: hidden; margin-bottom: 10px;">
+      <img style="width: 100%; height: auto;" src="https://3.files.edl.io/6b07/25/09/25/184020-7dd2c25a-923a-4d1d-bb4a-0a31f922344e.png" alt="calculator">
+    </div>
+
+    <!-- Form -->
+    <form id="calc-form" style="width:100%; display:flex; flex-direction:column; align-items:center; font-family:'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-weight:700; font-size:18px; gap:10px;">
+
+      <!-- Property input -->
+      <label for="number" style="font-size: clamp(16px, 3.5vw, 20px); color: white; line-height:1.2;">Enter your taxable property value ($):</label>
+      <input
+        id="number"
+        name="number"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="e.g. 250000"
+        aria-label="Taxable property value in dollars"
+        style="padding: 16px; font-size: 16px; font-weight: 700; width: 100%; max-width: 420px; box-sizing: border-box; background-color: white; color: #013220; border: 2px solid #013220; border-radius: 8px; text-align:center; box-shadow: 0 2px 6px rgba(0,0,0,.15);"
+      >
+
+      <!-- Button -->
+      <input
+        id="submit"
+        type="submit"
+        value="Calculate Estimated Impact"
+        style="padding: 16px; font-size: clamp(16px, 3.5vw, 20px); font-weight: 800; width: 100%; max-width: 420px; box-sizing: border-box; background-color: #D3D3D3; color: black; border: 0; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25);"
+      >
+
+      <!-- Monthly -->
+      <div style="margin-top: 8px;">
+        <label for="resultD" style="display:block; margin-bottom:8px; font-size: clamp(18px, 4.2vw, 28px); color: white; line-height:1.15;">
+          Estimated <br>Monthly Increase:
+        </label>
+        <input
+          id="resultD"
+          type="text"
+          readonly
+          style="font-size: clamp(18px, 4vw, 22px); font-weight: 800; color: black; width: 100%; max-width: 420px; box-sizing: border-box; background-color: #D3D3D3; border: 2px solid white; border-radius: 8px; text-align: center; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.2);"
+        >
+      </div>
+
+      <!-- Annual -->
+      <div>
+        <label for="resultC" style="display:block; margin:8px 0; font-size: clamp(18px, 4.2vw, 28px); color: white; line-height:1.15;">
+          Estimated <br>Annual Increase:
+        </label>
+        <input
+          id="resultC"
+          type="text"
+          readonly
+          style="font-size: clamp(18px, 4vw, 22px); font-weight: 800; color: black; width: 100%; max-width: 420px; box-sizing: border-box; background-color: #D3D3D3; border: 2px solid white; border-radius: 8px; text-align: center; padding: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.2);"
+        >
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="padding: 6px 10px; max-width: 460px;">
+        <span style="display:block; font-size: 11px; color: white; font-style: italic; opacity:.9;">
+          This estimation is not legally binding. Taxable home value includes a Homestead Exemption in the calculations.
+        </span>
+      </div>
+
+      <!-- JS -->
+      <script>
+        (function () {
+          const input = document.getElementById("number");
+          const form  = document.getElementById("calc-form");
+          const outAnnual  = document.getElementById("resultC");
+          const outMonthly = document.getElementById("resultD");
+
+          // Formatters
+          const fmtInt = new Intl.NumberFormat("en-US");
+          const fmtUSD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+          // Keep only digits, then add commas
+          function formatWithCommas(raw) {
+            const digits = (raw || "").replace(/[^0-9]/g, "");
+            if (!digits) return "";
+            return fmtInt.format(Number(digits));
+          }
+
+          // On type, live-format with commas
+          input.addEventListener("input", function () {
+            const start = this.selectionStart;
+            const end   = this.selectionEnd;
+            const before = this.value;
+            const formatted = formatWithCommas(before);
+            this.value = formatted;
+
+            // Try to keep caret near where user was typing
+            const delta = formatted.length - before.length;
+            this.setSelectionRange(Math.max(0, (start || 0) + delta), Math.max(0, (end || 0) + delta));
+          });
+
+          // Submit (button click or Enter)
+          form.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const raw = (input.value || "").replace(/,/g, "");
+            const number = Number(raw);
+
+            if (!raw || !Number.isFinite(number) || number <= 0) {
+              outAnnual.value = "";
+              outMonthly.value = "";
+              return;
+            }
+
+            // === RATE LOGIC ===
+            // 7 cents per $100 of taxable value  => 0.07 / 100  => 0.0007
+            const RATE_PER_DOLLAR = 0.0007;
+
+            const annual = number * RATE_PER_DOLLAR;  // annual increase
+            const monthly = annual / 12;              // monthly increase
+
+            outAnnual.value  = fmtUSD.format(annual);
+            outMonthly.value = fmtUSD.format(monthly);
+          });
+        })();
+      </script>
+    </form>
+  </div>
+</div>
